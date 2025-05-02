@@ -1,0 +1,25 @@
+# Zig build artefacts
+.zig-cache/
+zig-out/
+
+# Build scripts cache
+build.zig.zon
+
+# Binaries
+*.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vim swap / Emacs backup
+*.swp
+*~
