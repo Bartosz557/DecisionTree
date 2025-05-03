@@ -1,5 +1,5 @@
 const std = @import("std");
-const structure = @import("recordStruct.zig");
+const structure = @import("structures.zig");
 
 pub fn readDataset(allocator: *std.mem.Allocator, path: []const u8) ![]structure.Record {
     const fs = std.fs.cwd();
@@ -12,10 +12,10 @@ pub fn readDataset(allocator: *std.mem.Allocator, path: []const u8) ![]structure
     var records = std.ArrayList(structure.Record).init(allocator.*);
 
     while (try reader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-        var tokenizer = std.mem.tokenizeAny(u8, line, ";");
+        var tokenizer = std.mem.tokenizeAny(u8, line, ",");
         var record = structure.Record{
             .attributes = undefined,
-            .attribute_count = 0,
+            .attributeCount = 0,
             .decision = 0,
         };
 
@@ -39,14 +39,13 @@ pub fn readDataset(allocator: *std.mem.Allocator, path: []const u8) ![]structure
         }
 
         if (!skip_line) {
-            record.attribute_count = i;
+            record.attributeCount = i;
             try records.append(record);
         }
     }
 
     return records.toOwnedSlice();
 }
-
 
 pub fn readDecisions(allocator: *std.mem.Allocator, records: []const structure.Record) ![]u8 {
     const out = try allocator.alloc(u8, records.len);

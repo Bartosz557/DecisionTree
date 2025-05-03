@@ -1,19 +1,16 @@
 const std = @import("std");
-const structure = @import("recordStruct.zig");
+const structure = @import("structures.zig");
 
 pub fn infoXT(allocator: *std.mem.Allocator, records: []const structure.Record, decisions: []const u8) ![]f64 {
-    var attributesEntropies = try allocator.alloc(f64, records[0].attribute_count);
+    var attributesEntropies = try allocator.alloc(f64, records[0].attributeCount);
     var freeOnError = true;
     defer if (freeOnError) allocator.free(attributesEntropies);
     // Iterating Ai
-    for (0..records[0].attribute_count) |i| {
+    for (0..records[0].attributeCount) |i| {
         // Iterating through record ith attribute
         // Features = column values of each Attribute - I values
-        var features = try allocator.alloc(u8, records.len);
+        const features = try getFeatures(allocator, records, i);
         defer allocator.free(features);
-        for (records, 0..) |record, j| { // Rows = J
-            features[j] = record.attributes[i];
-        }
         // Partition = Tj
         var partitions = try getPartitions(allocator, features, decisions);
         defer partitions.deinit();
@@ -24,7 +21,15 @@ pub fn infoXT(allocator: *std.mem.Allocator, records: []const structure.Record, 
     return attributesEntropies;
 }
 
-fn getPartitions(allocator: *std.mem.Allocator, features: []const u8, decisions: []const u8) !std.AutoHashMap(u8, std.ArrayList(u8)) {
+pub fn getFeatures(allocator: *std.mem.Allocator, records: []const structure.Record, aIndex: usize) ![]u8 {
+    var features = try allocator.alloc(u8, records.len);
+    for (records, 0..) |record, j| { // Rows = J
+        features[j] = record.attributes[aIndex];
+    }
+    return features;
+}
+
+pub fn getPartitions(allocator: *std.mem.Allocator, features: []const u8, decisions: []const u8) !std.AutoHashMap(u8, std.ArrayList(u8)) {
     var partitions = std.AutoHashMap(u8, std.ArrayList(u8)).init(allocator.*);
     for (features, 0..) |feature, i| {
         const decision = decisions[i];
@@ -72,4 +77,77 @@ pub fn calculateEntropy(allocator: *std.mem.Allocator, decisions: []const u8) !f
     }
 
     return entropy;
+}
+
+pub fn gainXT(allocator: *std.mem.Allocator, entropy: f64, attributesEntropies: []const f64) ![]const f64 {
+    var attributesGains = try allocator.alloc(f64, attributesEntropies.len);
+    for (attributesEntropies, 0..) |aEntropy, i| {
+        attributesGains[i] = entropy - aEntropy;
+    }
+    return attributesGains;
+}
+
+// used only for analysis in main.zig
+pub fn getMaxAttributeIndex(values: []const f64) !usize {
+    var maxIndex: usize = 0;
+    var maxVal: f64 = values[0];
+    for (values, 0..) |value, i| {
+        if (value > maxVal) {
+            maxVal = value;
+            maxIndex = i;
+        }
+    }
+    return maxIndex;
+}
+
+pub fn getMaxValueIndex(values: []const f64, isAttributeAvailable: []const bool) !usize {
+    var bestIndex: usize = undefined;
+    for (isAttributeAvailable, 0..) |isAvailable, i| {
+        if (isAvailable) {
+            bestIndex = i;
+            break;
+        }
+    }
+
+    var bestValue = values[bestIndex];
+    
+    for (isAttributeAvailable, 0..) |isAvailable, i| {
+        if ((isAvailable) and (values[i] > bestValue)) {
+            bestValue = values[i];
+            bestIndex = i;
+        }
+    }
+
+    return bestIndex;
+}
+
+pub fn splitInfoXT(allocator: *std.mem.Allocator, records: []const structure.Record, decisions: []const u8) ![]const f64 {
+    var splitInfo = try allocator.alloc(f64, records[0].attributeCount);
+    for (0..records[0].attributeCount) |i| {
+        var attributeSplitInfo: f64 = 0;
+        const features = try getFeatures(allocator, records, i);
+        defer allocator.free(features);
+        var partitions = try getPartitions(allocator, features, decisions);
+        defer partitions.deinit();
+        var it = partitions.iterator();
+        while (it.next()) |entry| {
+            const slice = try entry.value_ptr.*.toOwnedSlice();
+            defer allocator.free(slice);
+            const partitionWeight: f64 = @as(f64, @floatFromInt(slice.len)) / @as(f64, @floatFromInt(records.len));
+            attributeSplitInfo -= partitionWeight * std.math.log2(partitionWeight);
+        }
+        splitInfo[i] = attributeSplitInfo;
+    }
+    return splitInfo;
+}
+pub fn gainRatioXT(allocator: *std.mem.Allocator, gains: []const f64, splitInfo: []const f64) ![]const f64 {
+    var gainsRatios = try allocator.alloc(f64, gains.len);
+    for (gains, 0..) |gain, i| {
+            if (splitInfo[i] == 0.0) {
+        gainsRatios[i] = 0.0;
+    } else {
+        gainsRatios[i] = gain / splitInfo[i];
+    }
+    }
+    return gainsRatios;
 }
