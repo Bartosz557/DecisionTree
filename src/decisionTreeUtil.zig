@@ -8,12 +8,7 @@ const decisionTreeUtil = @import("decisionTreeUtil.zig");
 
 pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Record,  decisions: []const u8, isAttributeAvailable: []bool) !*structure.TreeNode {
 
-    std.debug.print("\nBuilding a new tree node\n", .{});
-    for (decisions) |d| {
-        std.debug.print("Decision: {}\n", .{d});
-    }
     if(isPure(decisions)) {
-        std.debug.print("\nPure decisions. Creating new leaf\n", .{});
         return try createLeaf(allocator, decisions[0]);
     }
 
@@ -22,31 +17,20 @@ pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Recor
         if (b) { anyLeft = true; break; }
     }
     if (!anyLeft) {
-        std.debug.print("\nNo attributes left. Creating new leaf\n", .{});
         return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
     }
 
-
+    const attributeCount = isAttributeAvailable.len;
     const entropy = try entropyUtil.calculateEntropy(allocator, decisions);
     const attributesEntropies = try entropyUtil.infoXT(allocator, records, decisions);
     const attributesGains = try entropyUtil.gainXT(allocator, entropy, attributesEntropies);
     const splitInfo = try entropyUtil.splitInfoXT(allocator, records, decisions);
     const gainRatio = try entropyUtil.gainRatioXT(allocator, attributesGains, splitInfo);
-    for (gainRatio, 0..) |ratio, i| {
-        std.debug.print("Gain ratio for attribute {} = {d}\n", .{ i, ratio });
-    }
     const bestRatioIndex = try entropyUtil.getMaxValueIndex(gainRatio, isAttributeAvailable);
-    std.debug.print("Best Attribute index: {}\n", .{bestRatioIndex});
-
-    var isNextAttributeAvailable = isAttributeAvailable;
-    isNextAttributeAvailable[bestRatioIndex] = false;
 
     if (gainRatio[bestRatioIndex] == 0.0) {
-        std.debug.print("\nBest Ratio equals 0. Creating new leaf\n", .{});
         return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
     }
-
-
 
     const node = try createInternal(allocator, bestRatioIndex);
 
@@ -56,31 +40,26 @@ pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Recor
     defer partitions.deinit();
 
     if (partitions.count() <= 1) {
-            std.debug.print("\nPartition coun: {}. Creating new leaf\n", .{partitions.count()});
-    return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
-    }
-
-    for (features) |d| {
-        std.debug.print("features: {}\n", .{d});
+        return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
     }
 
     var it = partitions.iterator();
     while (it.next()) |entry| {
-        std.debug.print("partition key: {}\n", .{entry.key_ptr.*});
         const partitionValue = entry.key_ptr.*;
         const decisionsSlice = try entry.value_ptr.*.toOwnedSlice();
         defer allocator.free(decisionsSlice);
 
-        for (decisionsSlice) |d| {
-            std.debug.print("values: {}\n", .{d});
-        }
-
-
         const recordsSlice = try filterRecords(allocator, records, bestRatioIndex, partitionValue);
         defer allocator.free(recordsSlice);
 
+        // Workaround with bridge buffer to give child nodes specific list of available atttributes
+        var isAttributeAvailableBuffer: [structure.MAX_ATTRS]bool = undefined;
+        @memcpy(isAttributeAvailableBuffer[0..attributeCount], isAttributeAvailable[0..attributeCount]);        
+        const isNextAttributeAvailable = isAttributeAvailableBuffer[0..attributeCount];
+        isNextAttributeAvailable[bestRatioIndex] = false;
+
         const child = try buildTree(allocator, recordsSlice, decisionsSlice, isNextAttributeAvailable);
-        _ = try node.Internal.children.put(partitionValue, child); // '_ =' because put() returns value 
+        _ = try node.Internal.children.put(partitionValue, child); // '_ =' because put() returns value required to be consumed
     }
 
     return node;
@@ -104,7 +83,6 @@ pub fn createInternal(allocator: *std.mem.Allocator, bestRatioIndex: usize) !*st
             .children = std.AutoHashMap(u8, *structure.TreeNode).init(allocator.*),
         },
     };
-    std.debug.print("\nCreating new child node\n", .{});
     return node;
 }
 

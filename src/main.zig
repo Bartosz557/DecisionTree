@@ -11,12 +11,9 @@ pub fn main() !void {
     const allocator = &allocator_instance; // required is a pointer
     const records = try dataset.readDataset(allocator, "resources/data.txt");
     // try analysis(allocator, records);
-    std.debug.print("\nstarting\n", .{});
-    //building decision tree
+    // building decision tree
     const decisions = try dataset.readDecisions(allocator, records);
-
     const root = try decisionTreeUtil.buildTree(allocator, records, decisions, getMockAttributeAvailability(records));
-    std.debug.print("\nThe tree has been built\n", .{});
     printTree(root, 0);
 
     // freeTree(allocator, root);

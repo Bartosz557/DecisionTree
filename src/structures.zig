@@ -1,7 +1,9 @@
 const std = @import("std");
 
+pub const MAX_ATTRS = 16;
+
 pub const Record = struct {
-    attributes: [16]u8,
+    attributes: [MAX_ATTRS]u8,
     attributeCount: usize,
     decision: u8,
 };
