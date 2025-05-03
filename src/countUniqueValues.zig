@@ -1,11 +1,7 @@
 const std = @import("std");
-const structure = @import("recordStruct.zig");
+const structure = @import("structures.zig");
 
-pub fn countValueOccurrencesPerAttribute(
-    allocator: *std.mem.Allocator,
-    records: []const structure.Record,
-    attr_count: usize,
-) ![]std.AutoHashMap(u8, usize) {
+pub fn countValueOccurrencesPerAttribute(allocator: *std.mem.Allocator, records: []const structure.Record, attr_count: usize) ![]std.AutoHashMap(u8, usize) {
     var maps = try allocator.alloc(std.AutoHashMap(u8, usize), attr_count);
 
     for (maps) |*map| {
@@ -13,7 +9,7 @@ pub fn countValueOccurrencesPerAttribute(
     }
 
     for (records) |r| {
-        for (r.attributes[0..r.attribute_count], 0..) |value, i| {
+        for (r.attributes[0..r.attributeCount], 0..) |value, i| {
             const map = &maps[i];
             const entry = try map.getOrPut(value);
             if (!entry.found_existing) {
