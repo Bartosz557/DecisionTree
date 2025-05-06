@@ -11,25 +11,20 @@ pub fn main() !void {
     const allocator = &allocator_instance; // required is a pointer
     const records = try dataset.readDataset(allocator, "resources/data.txt");
     // try analysis(allocator, records);
-    // building decision tree
+
     const decisions = try dataset.readDecisions(allocator, records);
     const root = try decisionTreeUtil.buildTree(allocator, records, decisions, getMockAttributeAvailability(records));
 
+    std.debug.print("\n\n\n\n\nGenerated Tree:\n\n", .{});
+
     printTreeStyleTree(root, "", true, null);
 
-
-    // allocator.free(root);
-    // allocator.free(records);
-    // allocator.free(decisions);
+    allocator.free(records);
+    allocator.free(decisions);
 }
 
 
-fn printTreeStyleTree(
-    node: *structure.TreeNode,
-    indent: []const u8,
-    isLast: bool,
-    label: ?u8,
-) void {
+fn printTreeStyleTree(node: *structure.TreeNode, indent: []const u8, isLast: bool, label: ?u8 ) void {
     std.debug.print("{s}", .{indent});
     if (label) |v| {
         if (isLast) {
@@ -90,18 +85,6 @@ fn printTreeStyleTree(
         },
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
 
 fn getMockAttributeAvailability( records: []const structure.Record) [structure.MAX_ATTRS]bool {
     var mockAvailabity: [structure.MAX_ATTRS]bool = undefined;
@@ -181,5 +164,5 @@ fn analysis(allocator: *std.mem.Allocator, records: []const structure.Record) !v
     std.debug.print("\n", .{});
     const bestRatioIndex = try entropyUtil.getMaxAttributeIndex(gainRatio);
     std.debug.print("The attribute {d} has the best ratio: {d}\n", .{ bestRatioIndex, gainRatio[bestRatioIndex] });
-    std.debug.print("\n", .{});
+    std.debug.print("\n\n\n", .{});
 }

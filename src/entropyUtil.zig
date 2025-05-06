@@ -101,9 +101,6 @@ pub fn getMaxAttributeIndex(values: []const f64) !usize {
 }
 
 pub fn getMaxValueIndex(values: []const f64, isAttributeAvailable: [structure.MAX_ATTRS]bool) !usize {
-    for (isAttributeAvailable, 0..) |isAvailable, i| {
-        std.debug.print("Attribute {} is available?: {}", .{i, isAvailable});
-    }
     var bestIndex: usize = undefined;
     for (isAttributeAvailable, 0..) |isAvailable, i| {
         if (isAvailable) {
@@ -143,14 +140,15 @@ pub fn splitInfoXT(allocator: *std.mem.Allocator, records: []const structure.Rec
     }
     return splitInfo;
 }
+
 pub fn gainRatioXT(allocator: *std.mem.Allocator, gains: []const f64, splitInfo: []const f64) ![]const f64 {
     var gainsRatios = try allocator.alloc(f64, gains.len);
     for (gains, 0..) |gain, i| {
-            if (splitInfo[i] == 0.0) {
-        gainsRatios[i] = 0.0;
-    } else {
-        gainsRatios[i] = gain / splitInfo[i];
-    }
+        if (splitInfo[i] == 0.0) {
+            gainsRatios[i] = 0.0;
+        } else {
+            gainsRatios[i] = gain / splitInfo[i];
+        }
     }
     return gainsRatios;
 }

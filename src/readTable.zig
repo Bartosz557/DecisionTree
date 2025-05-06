@@ -2,6 +2,7 @@ const std = @import("std");
 const structure = @import("structures.zig");
 
 pub fn readDataset(allocator: *std.mem.Allocator, path: []const u8) ![]structure.Record {
+    
     const fs = std.fs.cwd();
     const file = try fs.openFile(path, .{});
     defer file.close();

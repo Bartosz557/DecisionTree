@@ -6,7 +6,9 @@ const structure = @import("structures.zig");
 const decisionTreeUtil = @import("decisionTreeUtil.zig");
 
 pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Record, decisions: []const u8, isAttributeAvailable: [structure.MAX_ATTRS]bool) !*structure.TreeNode {
-    std.debug.print("\nStarting new node with records:\n", .{});
+
+    std.debug.print("\n*** Starting a new node with records: ***\n", .{});
+
     for (records, 0..) |rec, i| {
         std.debug.print("  {d}: ", .{i});
         for (rec.attributes[0..rec.attributeCount]) |attr| {
@@ -20,24 +22,27 @@ pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Recor
     }
 
     var anyLeft = false;
+
     for (isAttributeAvailable) |b| {
         if (b) {
             anyLeft = true;
             break;
         }
     }
+
     if (!anyLeft) {
         return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
     }
 
-    // const attributeCount = isAttributeAvailable.len;
     const entropy = try entropyUtil.calculateEntropy(allocator, decisions);
     const attributesEntropies = try entropyUtil.infoXT(allocator, records, decisions);
     const attributesGains = try entropyUtil.gainXT(allocator, entropy, attributesEntropies);
     const splitInfo = try entropyUtil.splitInfoXT(allocator, records, decisions);
     const gainRatio = try entropyUtil.gainRatioXT(allocator, attributesGains, splitInfo);
     const bestRatioIndex = try entropyUtil.getMaxValueIndex(gainRatio, isAttributeAvailable);
+
     std.debug.print("Best attribute found: {}\n", .{bestRatioIndex});
+
     if (gainRatio[bestRatioIndex] == 0.0) {
         return try createLeaf(allocator, try getMostCommonDecision(allocator, decisions));
     }
@@ -46,6 +51,7 @@ pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Recor
 
     const features = try entropyUtil.getFeatures(allocator, records, bestRatioIndex);
     defer allocator.free(features);
+
     var partitions = try entropyUtil.getPartitions(allocator, features, decisions);
     defer partitions.deinit();
 
@@ -57,17 +63,20 @@ pub fn buildTree(allocator: *std.mem.Allocator, records: []const structure.Recor
     while (it.next()) |entry| {
         const partitionValue = entry.key_ptr.*;
         std.debug.print("Partition with key: {} for attribute {}\n", .{ partitionValue, bestRatioIndex });
+        
         const decisionsSlice = try entry.value_ptr.*.toOwnedSlice();
         defer allocator.free(decisionsSlice);
+
         for (decisionsSlice) |decision| {
             std.debug.print("   with decision: {}\n", .{decision});
         }
+
         const recordsSlice = try filterRecords(allocator, records, bestRatioIndex, partitionValue);
         defer allocator.free(recordsSlice);
         // Pass the entire array here to deep copy instead of shallow with slice
         const isAttributeAvailableBuffer: [structure.MAX_ATTRS]bool = isAttributeAvailable;
         const child = try buildTree(allocator, recordsSlice, decisionsSlice, isAttributeAvailableBuffer);
-        _ = try node.Internal.children.put(partitionValue, child); // '_ =' because put() returns value required to be consumed
+        _ = try node.Internal.children.put(partitionValue, child); // '_ =' need to consume value returned by put()
     }
     return node;
 }
@@ -95,7 +104,7 @@ pub fn createInternal(allocator: *std.mem.Allocator, bestRatioIndex: usize) !*st
 }
 
 fn createLeaf(allocator: *std.mem.Allocator, decision: u8) !*structure.TreeNode {
-    std.debug.print("Creating LEAF for decision {}\n", .{decision});
+    std.debug.print("Creating LEAF for decision {}\n\n", .{decision});
     const node = try allocator.create(structure.TreeNode);
     node.* = structure.TreeNode{ .Leaf = .{ .decision = decision } };
     return node;

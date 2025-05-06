@@ -19,6 +19,5 @@ pub fn countValueOccurrencesPerAttribute(allocator: *std.mem.Allocator, records:
             }
         }
     }
-
     return maps;
 }
