@@ -14,12 +14,91 @@ pub fn main() !void {
     // building decision tree
     const decisions = try dataset.readDecisions(allocator, records);
     const root = try decisionTreeUtil.buildTree(allocator, records, decisions, getMockAttributeAvailability(records));
-    printTree(root, 0);
 
-    // freeTree(allocator, root);
+    printTreeStyleTree(root, "", true, null);
+
+
+    // allocator.free(root);
     // allocator.free(records);
     // allocator.free(decisions);
 }
+
+
+fn printTreeStyleTree(
+    node: *structure.TreeNode,
+    indent: []const u8,
+    isLast: bool,
+    label: ?u8,
+) void {
+    // wypisz aktualną gałąź
+    std.debug.print("{s}", .{indent});
+    if (label) |v| {
+        if (isLast) {
+        std.debug.print("+-- {d} -> ", .{v});
+    } else {
+        std.debug.print("|-- {d} -> ", .{v});
+    }
+    }
+
+    switch (node.*) {
+        .Leaf => |leaf| {
+            std.debug.print("Leaf({d})\n", .{leaf.decision});
+        },
+        .Internal => |inNode| {
+            std.debug.print("[A{d}]\n", .{inNode.attributeIndex});
+
+            // przygotuj nowe wcięcie
+            var newIndentBuf: [256]u8 = undefined;
+            var len: usize = 0;
+
+            // kopiuj stare indent
+            for (indent) |c| {
+                newIndentBuf[len] = c;
+                len += 1;
+            }
+
+            // dodaj nową warstwę zależnie od pozycji węzła
+            const addition = if (isLast) "    " else "|   ";
+            for (addition) |c| {
+                newIndentBuf[len] = c;
+                len += 1;
+            }
+
+            const newIndent = newIndentBuf[0..len];
+
+            // policz dzieci
+            var count: usize = 0;
+            var counter = inNode.children.iterator();
+            while (counter.next() != null) : (count += 1) {}
+
+            // wypisz dzieci z wcięciem
+            var it = inNode.children.iterator();
+            var idx: usize = 0;
+            while (it.next()) |entry| {
+                const last = (idx == count - 1);
+                printTreeStyleTree(entry.value_ptr.*, newIndent, last, entry.key_ptr.*);
+
+                // dodaj pionowe oddzielenie między rodzeństwem
+                if (!last) {
+                    std.debug.print("{s}|\n", .{newIndent});
+                }
+
+                idx += 1;
+            }
+        },
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
 
 fn getMockAttributeAvailability( records: []const structure.Record) [structure.MAX_ATTRS]bool {
     var mockAvailabity: [structure.MAX_ATTRS]bool = undefined;
@@ -27,29 +106,6 @@ fn getMockAttributeAvailability( records: []const structure.Record) [structure.M
     for (mockAvailabity[0..attributeNum]) |*slot| slot.* = true;
     return mockAvailabity;
 }
-
-fn printTree(node: *structure.TreeNode, indent: usize) void {
-    for (0..indent) |_| {
-        std.debug.print(" ", .{});
-    }
-
-    switch (node.*) {
-        .Leaf => |leaf| {
-            std.debug.print("-> decision {d}\n", .{ leaf.decision });
-        },
-        .Internal => |inNode| {
-            std.debug.print("[A{d}]\n", .{ inNode.attributeIndex });
-            var it = inNode.children.iterator();
-            while (it.next()) |entry| {
-                const value = entry.key_ptr.*;
-                for (0..indent+4) |_| std.debug.print(" ", .{});
-                std.debug.print("value {d}:\n", .{ value });
-                printTree(entry.value_ptr.*, indent + 4);
-            }
-        },
-    }
-}
-
 
 fn analysis(allocator: *std.mem.Allocator, records: []const structure.Record) !void {
     std.debug.print("Loaded {} records\n", .{records.len});
