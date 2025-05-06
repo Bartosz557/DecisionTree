@@ -30,14 +30,13 @@ fn printTreeStyleTree(
     isLast: bool,
     label: ?u8,
 ) void {
-    // wypisz aktualną gałąź
     std.debug.print("{s}", .{indent});
     if (label) |v| {
         if (isLast) {
-        std.debug.print("+-- {d} -> ", .{v});
-    } else {
-        std.debug.print("|-- {d} -> ", .{v});
-    }
+            std.debug.print("+-- {d} -> ", .{v});
+        } else {
+            std.debug.print("|-- {d} -> ", .{v});
+        }
     }
 
     switch (node.*) {
@@ -47,7 +46,7 @@ fn printTreeStyleTree(
         .Internal => |inNode| {
             std.debug.print("[A{d}]\n", .{inNode.attributeIndex});
 
-            // przygotuj nowe wcięcie
+            // przygotuj nowe indent
             var newIndentBuf: [256]u8 = undefined;
             var len: usize = 0;
 
@@ -57,7 +56,7 @@ fn printTreeStyleTree(
                 len += 1;
             }
 
-            // dodaj nową warstwę zależnie od pozycji węzła
+            // dodaj gałąź pionową lub pustą
             const addition = if (isLast) "    " else "|   ";
             for (addition) |c| {
                 newIndentBuf[len] = c;
@@ -66,19 +65,22 @@ fn printTreeStyleTree(
 
             const newIndent = newIndentBuf[0..len];
 
+            // dodaj pusty wiersz po węźle (lepsza czytelność), tylko jeśli nie jest ostatni
+            std.debug.print("{s}|\n", .{newIndent});
+
             // policz dzieci
             var count: usize = 0;
-            var counter = inNode.children.iterator();
-            while (counter.next() != null) : (count += 1) {}
+            var countIt = inNode.children.iterator();
+            while (countIt.next() != null) : (count += 1) {}
 
-            // wypisz dzieci z wcięciem
+            // iteruj po dzieciach
             var it = inNode.children.iterator();
             var idx: usize = 0;
             while (it.next()) |entry| {
-                const last = (idx == count - 1);
+                const last = idx == count - 1;
                 printTreeStyleTree(entry.value_ptr.*, newIndent, last, entry.key_ptr.*);
 
-                // dodaj pionowe oddzielenie między rodzeństwem
+                // dodaj odstęp tylko między dziećmi
                 if (!last) {
                     std.debug.print("{s}|\n", .{newIndent});
                 }
@@ -88,6 +90,7 @@ fn printTreeStyleTree(
         },
     }
 }
+
 
 
 
