@@ -100,7 +100,10 @@ pub fn getMaxAttributeIndex(values: []const f64) !usize {
     return maxIndex;
 }
 
-pub fn getMaxValueIndex(values: []const f64, isAttributeAvailable: []const bool) !usize {
+pub fn getMaxValueIndex(values: []const f64, isAttributeAvailable: [structure.MAX_ATTRS]bool) !usize {
+    for (isAttributeAvailable, 0..) |isAvailable, i| {
+        std.debug.print("Attribute {} is available?: {}", .{i, isAvailable});
+    }
     var bestIndex: usize = undefined;
     for (isAttributeAvailable, 0..) |isAvailable, i| {
         if (isAvailable) {

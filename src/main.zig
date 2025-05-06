@@ -21,11 +21,11 @@ pub fn main() !void {
     // allocator.free(decisions);
 }
 
-fn getMockAttributeAvailability( records: []const structure.Record) []bool {
-    var mockAvailabity: [16]bool = undefined;
+fn getMockAttributeAvailability( records: []const structure.Record) [structure.MAX_ATTRS]bool {
+    var mockAvailabity: [structure.MAX_ATTRS]bool = undefined;
     const attributeNum = records[0].attributeCount;
     for (mockAvailabity[0..attributeNum]) |*slot| slot.* = true;
-    return mockAvailabity[0..attributeNum];
+    return mockAvailabity;
 }
 
 fn printTree(node: *structure.TreeNode, indent: usize) void {
